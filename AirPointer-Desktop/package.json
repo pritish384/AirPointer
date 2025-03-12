@@ -1,0 +1,44 @@
+{
+  "name": "airpointer-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "author": "Airpointer",
+  "main": "main/main.js",
+  "description": "Airpointer Desktop App",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev\" \"electron .\"",
+    "build": "next build && electron-builder",
+    "start": "next start",
+    "lint": "next lint",
+    "prettify": "prettier --write ."
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.4",
+    "electron-serve": "^2.1.1",
+    "electron-store": "^10.0.1",
+    "next": "15.2.1",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.1.2",
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.1",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
