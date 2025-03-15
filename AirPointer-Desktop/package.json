@@ -1,20 +1,23 @@
 {
   "name": "airpointer-desktop",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "author": "Airpointer",
+  "author": "Pritish Purav",
   "main": "main/main.js",
-  "description": "Airpointer Desktop App",
+  "description": "AirPointer Desktop App",
   "license": "MIT",
   "scripts": {
     "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev\" \"electron .\"",
     "build": "next build && electron-builder",
     "start": "next start",
+    "export": "next build",
     "lint": "next lint",
-    "prettify": "prettier --write ."
+    "prettify": "prettier --write .",
+    "electron": "electron ."
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.4",
+    "dotenv": "^16.4.7",
     "electron-serve": "^2.1.1",
     "electron-store": "^10.0.1",
     "next": "15.2.1",
@@ -22,9 +25,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-icons": "^5.5.0",
+    "serve-handler": "^6.1.6",
     "ws": "^8.18.1"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

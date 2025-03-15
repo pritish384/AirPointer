@@ -1,0 +1,6 @@
+{
+  "websocket": {
+    "port": 51000,
+    "password": "admin@123"
+  }
+}

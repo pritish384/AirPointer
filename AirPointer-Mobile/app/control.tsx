@@ -1,5 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Vibration,
+  ScrollView,
+} from "react-native";
+import SystemSetting from "react-native-system-setting";
 import { router, useLocalSearchParams } from "expo-router";
 import CustomSwitch from "../components/customSwitch";
 import Trackpad from "@/components/trackPad";
@@ -7,9 +15,6 @@ import * as Device from "expo-device";
 import GyroTrackpad from "@/components/gyroTrackPad";
 import CustomSlider from "@/components/customSlider";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ScrollView } from "react-native";
-import SystemSetting from "react-native-system-setting";
-import { Vibration } from "react-native";
 
 export default function Control() {
   const { ip, port, password } = useLocalSearchParams();
@@ -18,11 +23,14 @@ export default function Control() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [controlOn, setControlOn] = useState(false);
   const [airMouseOn, setAirMouseOn] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [manualPosition, setManualPosition] = useState({ x: 0, y: 0 });
+  const [gyroPosition, setGyroPosition] = useState({ x: 0, y: 0 });
   const [deviceModel, setDeviceModel] = useState("");
   const [sensitivity, setSensitivity] = useState(20);
   const [tap, setTap] = useState(false);
   const lastVolume = useRef(0);
+  const airMouseOnRef = useRef(airMouseOn);
+  const controlOnRef = useRef(controlOn);
 
   useEffect(() => {
     if (Device.brand && Device.modelName) {
@@ -52,9 +60,17 @@ export default function Control() {
         console.log("📩 Message from Server:", event.data);
         if (event.data === "AUTH_SUCCESS") {
           newSocket.send(JSON.stringify({ cmd: "DEVICE_INFO", deviceModel }));
-          newSocket.send(JSON.stringify({ cmd: "CONTROL_STATUS", controlOn }));
           newSocket.send(
-            JSON.stringify({ cmd: "AIRMOUSE_STATUS", airMouseOn }),
+            JSON.stringify({
+              cmd: "CONTROL_STATUS",
+              controlOn: controlOnRef.current,
+            }),
+          );
+          newSocket.send(
+            JSON.stringify({
+              cmd: "AIRMOUSE_STATUS",
+              airMouseOn: airMouseOnRef.current,
+            }),
           );
           console.log("🔓 Authenticated Successfully");
         } else if (event.data === "AUTH_FAILED") {
@@ -64,10 +80,29 @@ export default function Control() {
         }
       };
 
-      newSocket.onclose = () => {
-        console.log("🔌 WebSocket Closed");
-        setStatus("Disconnected");
-        setStatusColor("#dc2626"); // Dark Red
+      newSocket.onclose = (event) => {
+        // Add event parameter
+        console.log(
+          "🔌 WebSocket Closed. Code:",
+          event.code,
+          "Reason:",
+          event.reason,
+        );
+        setStatus(`Disconnected`);
+        setStatusColor("#dc2626");
+      };
+
+      newSocket.onerror = (error) => {
+        // Ignore WebSocket errors if they come from a 1005 or 1006 closure
+        if (
+          newSocket.readyState === WebSocket.CLOSING ||
+          newSocket.readyState === WebSocket.CLOSED
+        ) {
+          newSocket.close();
+          return;
+        }
+        setStatus("Error");
+        setStatusColor("#ef4444"); // Red
       };
 
       return () => {
@@ -80,19 +115,14 @@ export default function Control() {
     (cmd: string) => {
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(cmd);
-      } else {
-        console.warn("WebSocket is not connected");
       }
     },
     [socket],
   );
 
   const handleTapWrapper = useCallback(() => {
-    console.log("Real-time controlOn:", controlOn);
     if (controlOn) {
       handleTap();
-    } else {
-      console.log("Control is off");
     }
   }, [controlOn]);
 
@@ -119,30 +149,42 @@ export default function Control() {
     sendCommand(
       JSON.stringify({ cmd: "CONTROL_STATUS", controlOn: controlOn }),
     );
-  }, [controlOn]);
+  }, [controlOn, sendCommand]);
 
   useEffect(() => {
     sendCommand(
       JSON.stringify({ cmd: "AIRMOUSE_STATUS", airMouseOn: airMouseOn }),
     );
-  }, [airMouseOn]);
+  }, [airMouseOn, sendCommand]);
 
   useEffect(() => {
     if (controlOn) {
       sendCommand(
-        JSON.stringify({ cmd: "MOUSE_MOVE", x: position.x, y: position.y }),
+        JSON.stringify({
+          cmd: "MOUSE_MOVE",
+          x: manualPosition.x,
+          y: manualPosition.y,
+        }),
       );
     }
 
     if (airMouseOn) {
       sendCommand(
-        JSON.stringify({ cmd: "MOUSE_MOVE", x: position.x, y: position.y }),
+        JSON.stringify({
+          cmd: "MOUSE_MOVE",
+          x: gyroPosition.x,
+          y: gyroPosition.y,
+        }),
       );
     }
-  }, [position, controlOn, airMouseOn]);
+  }, [gyroPosition, manualPosition, controlOn, airMouseOn, sendCommand]);
 
-  const handleMove = (movement: { deltaX: number; deltaY: number }) => {
-    setPosition({ x: movement.deltaX, y: movement.deltaY });
+  const handleManualMove = (movement: { deltaX: number; deltaY: number }) => {
+    setManualPosition({ x: movement.deltaX, y: movement.deltaY });
+  };
+
+  const handleGyroMove = (movement: { deltaX: number; deltaY: number }) => {
+    setGyroPosition({ x: movement.deltaX, y: movement.deltaY });
   };
 
   useEffect(() => {
@@ -150,7 +192,7 @@ export default function Control() {
       sendCommand(JSON.stringify({ cmd: "MOUSE_LEFT_CLICK" }));
       setTap(false);
     }
-  }, [tap]);
+  }, [tap, sendCommand]);
 
   const handleTap = () => {
     console.log("Tapped");
@@ -238,12 +280,12 @@ export default function Control() {
           {/* Control Buttons */}
           <View style={styles.cardContainer}>
             <Trackpad
-              onMove={controlOn ? handleMove : undefined}
+              onMove={controlOn ? handleManualMove : undefined}
               onTap={handleTapWrapper}
               sensitivity={sensitivity}
             />
             <GyroTrackpad
-              onMove={airMouseOn ? handleMove : undefined}
+              onMove={airMouseOn ? handleGyroMove : undefined}
               sensitivity={sensitivity} // Adjust sensitivity if needed
             />
           </View>

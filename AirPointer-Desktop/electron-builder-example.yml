@@ -1,0 +1,14 @@
+appId: com.pritishpurav.airpointer
+productName: AirPointer
+files:
+  - "!**/node_modules/*"
+  - "out/**/*"
+  - "main/**/*"
+  - "package.json"
+
+win:
+  target: portable
+  icon: ./resources/icon.png
+  sign:
+    certificateFile: "certificate.pfx"  # Certificate file
+    certificatePassword: "..."  # Certificate password

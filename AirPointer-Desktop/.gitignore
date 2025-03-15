@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/dist
 
 # next.js
 /.next/
@@ -23,6 +24,7 @@
 # misc
 .DS_Store
 *.pem
+*.pfx
 
 # debug
 npm-debug.log*
@@ -39,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# electron
+electron-builder.yml

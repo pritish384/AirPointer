@@ -1,49 +1,48 @@
 const { app, BrowserWindow, screen } = require("electron");
-const serve = require("electron-serve");
+const serve = require("serve-handler");
+const http = require("http");
 const path = require("path");
 const WebSocket = require("ws");
 const { mouse, Point } = require("@nut-tree-fork/nut-js");
-const os = require("os"); // Import OS module
+const os = require("os");
 const { ipcMain } = require("electron");
-const Store = require("electron-store").default;
+const fs = require("fs");
+const defaultConfigPath = path.join(__dirname,"..","config" ,"default_values_config.json");
+const defaultConfig = JSON.parse(fs.readFileSync(defaultConfigPath, "utf-8"));
 
-const store = new Store();
-if (!store.has("port")) {
-  store.set("port", 5000);
-}
-if (!store.has("password")) {
-  store.set("password", "admin@1234");
+const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
+
+// Function to read config from file
+function readConfig() {
+  if (!fs.existsSync(CONFIG_PATH)) {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify({ port: defaultConfig.websocket.port, password: defaultConfig.websocket.password }, null, 2));
+    return { port: defaultConfig.websocket.port, password: defaultConfig.websocket.password };
+  }
+  return JSON.parse(fs.readFileSync(CONFIG_PATH));
 }
 
-function sendConfig() {
-  const config = {
-    port: store.get("port"),
-    password: store.get("password"),
-  };
-  return config;
+// Function to write config to file
+function writeConfig(newConfig) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(newConfig, null, 2));
 }
+
+const config = readConfig();
 
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
   for (const iface of Object.values(interfaces)) {
     for (const config of iface) {
       if (config.family === "IPv4" && !config.internal) {
-        return config.address; // Return the first non-internal IPv4 address
+        return config.address;
       }
     }
   }
-  return "127.0.0.1"; // Fallback to localhost
+  return "127.0.0.1";
 }
 
-const LOCAL_IP = getLocalIP(); // Fetch local IP
-let PORT = store.get("port");
-let password = store.get("password");
-
-const appServe = app.isPackaged
-  ? serve({
-      directory: path.join(__dirname, "../out"),
-    })
-  : null;
+const LOCAL_IP = getLocalIP();
+let PORT = config.port;
+let password = config.password;
 
 const createWindow = () => {
   const win = new BrowserWindow({
@@ -60,24 +59,32 @@ const createWindow = () => {
   });
 
   if (app.isPackaged) {
-    appServe(win).then(() => {
-      win.loadURL("app://-");
+    const server = http.createServer((req, res) => {
+      return serve(req, res, {
+        public: path.join(__dirname, "../out"),
+        cleanUrls: true,
+        rewrites: [{ source: "**", destination: "/index.html" }],
+      });
+    });
+    server.listen(0, () => {
+      const port = server.address().port;
+      win.loadURL(`http://localhost:${port}`);
+      console.log(`🚀 Dev Server started at http://localhost:${port}`);
     });
   } else {
     win.loadURL("http://localhost:3000");
     win.webContents.openDevTools();
-    win.webContents.on("did-fail-load", (e, code, desc) => {
+    win.webContents.on("did-fail-load", () => {
       win.webContents.reloadIgnoringCache();
     });
   }
-
-  return win; // Return the window instance
+  return win;
 };
 
 let win = null;
 app.on("ready", () => {
-  win = createWindow(); // Create the window and store the reference
-  startWebSocket(); // Pass window instance to WebSocket function
+  win = createWindow();
+  startWebSocket();
 });
 
 app.on("window-all-closed", () => {
@@ -86,26 +93,21 @@ app.on("window-all-closed", () => {
   }
 });
 
-let activeClient = null; // Store the active WebSocket client
-let wss = null; // Store the WebSocket server instance
+let activeClient = null;
+let wss = null;
 
 function startWebSocket() {
-  const mainWindow = win; // Store reference to main window
+  const mainWindow = win;
   wss = new WebSocket.Server({ port: PORT, host: LOCAL_IP });
 
   wss.on("connection", (ws) => {
-    // 🔴 If there's already an active connection, reject the new one
+    console.log("🔗 New WebSocket Client Connected!");
     if (activeClient) {
-      console.log(
-        "❌ Another client is already connected. Closing new connection.",
-      );
       ws.send("CONNECTION_REJECTED");
       ws.close();
       return;
     }
-
-    console.log("✅ WebSocket Client Connected!");
-    activeClient = ws; // Store the new active client
+    activeClient = ws;
     let authenticated = false;
 
     ws.on("message", async (message) => {
@@ -115,23 +117,21 @@ function startWebSocket() {
         if (decodedMessage === password) {
           authenticated = true;
           ws.send("AUTH_SUCCESS");
-          if (mainWindow) {
-            mainWindow.webContents.send("websocket-status", {
-              status: "Authenticated",
-            });
-          }
-          console.log("🔐 Authenticated!");
+          console.log("✅ Authentication Successful");
+          mainWindow.webContents.send("websocket-status", {
+            status: "Authenticated",
+          });
         } else {
           ws.send("AUTH_FAILED");
-          console.log("❌ Invalid Password");
-          ws.close(); // Close socket if authentication fails
+          console.log("❌ Authentication Failed");
+          ws.close();
         }
         return;
       }
 
       if (authenticated) {
-        console.log("📩 Received: ", decodedMessage);
         const data = JSON.parse(decodedMessage);
+        console.log("📡 Received Data: ", data);
         if (data.cmd === "DEVICE_INFO") {
           mainWindow.webContents.send("device-info", data);
         }
@@ -193,11 +193,10 @@ function restartWebSocket() {
     activeClient.close();
     activeClient = null;
   }
-  wss.close();
+  if (wss) wss.close();
   startWebSocket();
 }
 
-// ipcMain handlers (Registered once)
 ipcMain.handle("get-server-info", () => {
   return { ip: LOCAL_IP, port: PORT, password: password };
 });
@@ -210,16 +209,12 @@ ipcMain.handle("disconnect-client", () => {
 });
 
 ipcMain.handle("update-config", (event, config) => {
-  console.log("Received config:", config);
-  store.set("port", config.newPort);
-  store.set("password", config.newPassword);
+  writeConfig({ port: config.newPort, password: config.newPassword });
   PORT = config.newPort;
   password = config.newPassword;
   restartWebSocket();
 });
 
-ipcMain.handle("get-config", (event) => {
-  return { port: store.get("port"), password: store.get("password") };
+ipcMain.handle("get-config", () => {
+  return readConfig();
 });
-
-module.exports = { startWebSocket };

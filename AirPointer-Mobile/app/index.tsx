@@ -1,15 +1,16 @@
-import { Text, View } from "react-native";
+import { useState, useEffect } from "react";
+import {
+  Text,
+  View,
+  Image,
+  Pressable,
+  Modal,
+  StyleSheet,
+  TextInput,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Image } from "react-native";
-import { Pressable } from "react-native";
-import { Modal } from "react-native";
-import { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { StyleSheet } from "react-native";
-import { TextInput } from "react-native";
-import { useEffect } from "react";
-import { Camera } from "expo-camera";
-import { CameraView } from "expo-camera";
+import { Camera, CameraView } from "expo-camera";
 import { useRouter } from "expo-router";
 
 export default function Index() {
@@ -288,9 +289,9 @@ export default function Index() {
     >
       <Image
         source={require("../assets/images/icon.png")}
-        style={{ width: 100, height: 100 }}
+        style={{ width: 120, height: 120 }}
       />
-      <Text style={{ fontSize: 24, fontWeight: "bold", marginTop: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", marginTop: 5 }}>
         Welcome to Air Pointer
       </Text>
       <Text
