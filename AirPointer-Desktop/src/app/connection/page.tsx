@@ -25,27 +25,22 @@ export default function Connect() {
   useEffect(() => {
     if (typeof window !== "undefined" && window.electronAPI) {
       window.electronAPI.invoke("get-server-info").then((info) => {
-        console.log("Received server info:", info);
         setServerInfo(info);
 
         window.electronAPI.on("websocket-status", (data) => {
           setWsStatus(data.status);
-          console.log("Websocket connected:", data);
         });
 
         window.electronAPI.on("device-info", (data) => {
           setDeviceModel(data.deviceModel);
-          console.log("Device info received:", data);
         });
 
         window.electronAPI.on("control-status", (data) => {
           setControlOn(data.controlOn);
-          console.log("Control status received:", data);
         });
 
         window.electronAPI.on("airmouse-status", (data) => {
           setAirMouseOn(data.airMouseOn);
-          console.log("AirMouse status received:", data);
         });
       });
     }

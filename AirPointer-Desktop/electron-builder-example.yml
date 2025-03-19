@@ -10,5 +10,5 @@ win:
   target: portable
   icon: ./resources/icon.png
   sign:
-    certificateFile: "certificate.pfx"  # Certificate file
-    certificatePassword: "..."  # Certificate password
+    certificateFile: "certificate.pfx" # Certificate file
+    certificatePassword: "..." # Certificate password

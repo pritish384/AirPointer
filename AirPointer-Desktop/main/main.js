@@ -3,11 +3,16 @@ const serve = require("serve-handler");
 const http = require("http");
 const path = require("path");
 const WebSocket = require("ws");
-const { mouse, Point } = require("@nut-tree-fork/nut-js");
+const { mouse, Point, keyboard, Key } = require("@nut-tree-fork/nut-js");
 const os = require("os");
 const { ipcMain } = require("electron");
 const fs = require("fs");
-const defaultConfigPath = path.join(__dirname,"..","config" ,"default_values_config.json");
+const defaultConfigPath = path.join(
+  __dirname,
+  "..",
+  "config",
+  "default_values_config.json",
+);
 const defaultConfig = JSON.parse(fs.readFileSync(defaultConfigPath, "utf-8"));
 
 const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
@@ -15,8 +20,21 @@ const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
 // Function to read config from file
 function readConfig() {
   if (!fs.existsSync(CONFIG_PATH)) {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify({ port: defaultConfig.websocket.port, password: defaultConfig.websocket.password }, null, 2));
-    return { port: defaultConfig.websocket.port, password: defaultConfig.websocket.password };
+    fs.writeFileSync(
+      CONFIG_PATH,
+      JSON.stringify(
+        {
+          port: defaultConfig.websocket.port,
+          password: defaultConfig.websocket.password,
+        },
+        null,
+        2,
+      ),
+    );
+    return {
+      port: defaultConfig.websocket.port,
+      password: defaultConfig.websocket.password,
+    };
   }
   return JSON.parse(fs.readFileSync(CONFIG_PATH));
 }
@@ -69,7 +87,6 @@ const createWindow = () => {
     server.listen(0, () => {
       const port = server.address().port;
       win.loadURL(`http://localhost:${port}`);
-      console.log(`🚀 Dev Server started at http://localhost:${port}`);
     });
   } else {
     win.loadURL("http://localhost:3000");
@@ -101,7 +118,6 @@ function startWebSocket() {
   wss = new WebSocket.Server({ port: PORT, host: LOCAL_IP });
 
   wss.on("connection", (ws) => {
-    console.log("🔗 New WebSocket Client Connected!");
     if (activeClient) {
       ws.send("CONNECTION_REJECTED");
       ws.close();
@@ -117,13 +133,11 @@ function startWebSocket() {
         if (decodedMessage === password) {
           authenticated = true;
           ws.send("AUTH_SUCCESS");
-          console.log("✅ Authentication Successful");
           mainWindow.webContents.send("websocket-status", {
             status: "Authenticated",
           });
         } else {
           ws.send("AUTH_FAILED");
-          console.log("❌ Authentication Failed");
           ws.close();
         }
         return;
@@ -131,7 +145,6 @@ function startWebSocket() {
 
       if (authenticated) {
         const data = JSON.parse(decodedMessage);
-        console.log("📡 Received Data: ", data);
         if (data.cmd === "DEVICE_INFO") {
           mainWindow.webContents.send("device-info", data);
         }
@@ -158,6 +171,14 @@ function startWebSocket() {
           await mouse.leftClick();
         }
 
+        if (data.cmd === "KEYBOARD_ENTER") {
+          await keyboard.type(Key.Enter);
+        }
+
+        if (data.cmd === "KEYBOARD_BACKSPACE") {
+          await keyboard.type(Key.Backspace);
+        }
+
         if (data.cmd === "RECENTER_MOUSE") {
           const primaryDisplay = screen.getPrimaryDisplay();
           const { width, height } = primaryDisplay.workAreaSize;
@@ -171,7 +192,6 @@ function startWebSocket() {
     });
 
     ws.on("close", () => {
-      console.log("❌ WebSocket Client Disconnected");
       if (activeClient === ws) {
         activeClient = null; // Reset active client when it disconnects
       }
@@ -184,8 +204,6 @@ function startWebSocket() {
       }
     });
   });
-
-  console.log(`🚀 WebSocket server started at ws://${LOCAL_IP}:${PORT}`);
 }
 
 function restartWebSocket() {

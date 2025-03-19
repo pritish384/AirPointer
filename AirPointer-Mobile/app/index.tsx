@@ -50,7 +50,6 @@ export default function Index() {
     setIPDetailsModal(false);
     setModalVisible(false);
     // redirect
-    console.log("IP Details:", { ip, port, password });
     router.replace(`/control?ip=${ip}&port=${port}&password=${password}`);
   };
 

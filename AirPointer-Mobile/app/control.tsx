@@ -1,13 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Vibration,
-  ScrollView,
-} from "react-native";
-import SystemSetting from "react-native-system-setting";
+import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import useVolumeButtonListener from "@/hooks/useVolumeButtonListener";
 import { router, useLocalSearchParams } from "expo-router";
 import CustomSwitch from "../components/customSwitch";
 import Trackpad from "@/components/trackPad";
@@ -28,7 +21,6 @@ export default function Control() {
   const [deviceModel, setDeviceModel] = useState("");
   const [sensitivity, setSensitivity] = useState(20);
   const [tap, setTap] = useState(false);
-  const lastVolume = useRef(0);
   const airMouseOnRef = useRef(airMouseOn);
   const controlOnRef = useRef(controlOn);
 
@@ -42,22 +34,18 @@ export default function Control() {
 
   useEffect(() => {
     if (ip && port && password && deviceModel) {
-      console.log("Connecting to WebSocket:", { ip, port });
-
       const wsAddress = `ws://${ip}:${port}`;
       const newSocket = new WebSocket(wsAddress);
 
       setSocket(newSocket);
 
       newSocket.onopen = () => {
-        console.log("✅ WebSocket Connected:", wsAddress);
         newSocket.send(String(password));
         setStatus("Connected");
         setStatusColor("#10b981"); // Green
       };
 
       newSocket.onmessage = (event) => {
-        console.log("📩 Message from Server:", event.data);
         if (event.data === "AUTH_SUCCESS") {
           newSocket.send(JSON.stringify({ cmd: "DEVICE_INFO", deviceModel }));
           newSocket.send(
@@ -72,22 +60,13 @@ export default function Control() {
               airMouseOn: airMouseOnRef.current,
             }),
           );
-          console.log("🔓 Authenticated Successfully");
         } else if (event.data === "AUTH_FAILED") {
-          console.error("🔒 Authentication Failed");
           setStatus("Authentication Failed");
           setStatusColor("#ef4444"); // Red
         }
       };
 
-      newSocket.onclose = (event) => {
-        // Add event parameter
-        console.log(
-          "🔌 WebSocket Closed. Code:",
-          event.code,
-          "Reason:",
-          event.reason,
-        );
+      newSocket.onclose = () => {
         setStatus(`Disconnected`);
         setStatusColor("#dc2626");
       };
@@ -127,29 +106,14 @@ export default function Control() {
   }, [controlOn]);
 
   // ✅ Listen for Volume Button Press
-  useEffect(() => {
-    SystemSetting.getVolume().then((volume) => {
-      lastVolume.current = volume; // Store initial volume level
-    });
-
-    const volumeListener = SystemSetting.addVolumeListener((data) => {
-      if (data.value !== lastVolume.current) {
-        setTap(true); // Trigger tap event
-        Vibration.vibrate(100);
-        SystemSetting.setVolume(lastVolume.current); // Prevent actual volume change
-      }
-    });
-
-    return () => {
-      SystemSetting.removeVolumeListener(volumeListener);
-    };
-  }, []);
 
   useEffect(() => {
     sendCommand(
       JSON.stringify({ cmd: "CONTROL_STATUS", controlOn: controlOn }),
     );
   }, [controlOn, sendCommand]);
+
+  useVolumeButtonListener(sendCommand);
 
   useEffect(() => {
     sendCommand(
@@ -195,12 +159,10 @@ export default function Control() {
   }, [tap, sendCommand]);
 
   const handleTap = () => {
-    console.log("Tapped");
     setTap(true);
   };
 
   const handleDisconnect = () => {
-    console.log("Disconnecting WebSocket");
     if (socket) {
       socket.close();
     }

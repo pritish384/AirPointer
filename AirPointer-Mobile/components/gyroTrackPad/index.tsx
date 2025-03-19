@@ -18,10 +18,9 @@ const GyroTrackpad = ({
   const smoothedX = useRef(0);
   const smoothedZ = useRef(0);
   const lastTime = useRef(Date.now());
+  const subscriptionRef = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
-
     const initGyro = async () => {
       try {
         const isAvailable = await Gyroscope.isAvailableAsync();
@@ -30,30 +29,36 @@ const GyroTrackpad = ({
           return;
         }
 
-        subscription = Gyroscope.addListener(({ x, y, z }) => {
+        if (subscriptionRef.current) {
+          subscriptionRef.current.remove();
+        }
+
+        subscriptionRef.current = Gyroscope.addListener(({ x, y, z }) => {
           const now = Date.now();
           const deltaTime = (now - lastTime.current) / 1000;
 
+          const adjustedX = x - y * 0.1;
+          const adjustedZ = z - y * 0.1;
+
           // Apply smoothing
-          const newSmoothedX =
-            x * smoothingFactor + smoothedX.current * (1 - smoothingFactor);
-          const newSmoothedZ =
-            z * smoothingFactor + smoothedZ.current * (1 - smoothingFactor);
+          smoothedX.current =
+            adjustedX * smoothingFactor +
+            smoothedX.current * (1 - smoothingFactor);
+          smoothedZ.current =
+            adjustedZ * smoothingFactor +
+            smoothedZ.current * (1 - smoothingFactor);
 
           // Apply dead zone
           const applyDeadZone = (value: number) =>
             Math.abs(value) > deadZone ? value : 0;
 
           let deltaX =
-            applyDeadZone(newSmoothedZ) * -sensitivity * deltaTime * 100; // Rotation-based movement
+            applyDeadZone(smoothedZ.current) * -sensitivity * deltaTime * 100;
           let deltaY =
-            applyDeadZone(newSmoothedX) * -sensitivity * deltaTime * 100; // Forward-back tilt
+            applyDeadZone(smoothedX.current) * -sensitivity * deltaTime * 100;
 
           onMove?.({ deltaX, deltaY });
 
-          // Update refs
-          smoothedX.current = newSmoothedX;
-          smoothedZ.current = newSmoothedZ;
           lastTime.current = now;
         });
 
@@ -66,9 +71,12 @@ const GyroTrackpad = ({
     initGyro();
 
     return () => {
-      subscription?.remove();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        subscriptionRef.current = null;
+      }
     };
-  }, [onMove, sensitivity, deadZone, smoothingFactor]);
+  }, [sensitivity, deadZone, smoothingFactor, onMove]);
 
   return <View />;
 };

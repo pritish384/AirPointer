@@ -12,9 +12,10 @@ interface TrackpadProps {
   onMove?: (movement: { deltaX: number; deltaY: number }) => void;
   onStart?: () => void;
   onEnd?: () => void;
-  onTap?: () => void; // ✅ Added tap event
+  onTap?: () => void;
   style?: ViewStyle;
   sensitivity?: number;
+  smoothingFactor?: number; // ✅ Added smoothing factor
 }
 
 const Trackpad = ({
@@ -24,50 +25,64 @@ const Trackpad = ({
   onTap,
   style,
   sensitivity = 1,
+  smoothingFactor = 0.2, // ✅ Default smoothing
 }: TrackpadProps) => {
   const previousDx = useRef(0);
   const previousDy = useRef(0);
-  const startime = useRef(0); // ✅ Added startime
+  const smoothedDx = useRef(0);
+  const smoothedDy = useRef(0);
+  const startTime = useRef(0);
   const sensitivityRef = useRef(sensitivity);
-  const onMoveRef = useRef(onMove); // Store latest onMove function
-  const onTapRef = useRef(onTap); // ✅ Added tap event
+  const smoothingRef = useRef(smoothingFactor);
+  const onMoveRef = useRef(onMove);
+  const onTapRef = useRef(onTap);
 
   // Update refs on re-render
   sensitivityRef.current = sensitivity;
+  smoothingRef.current = smoothingFactor;
   onMoveRef.current = onMove;
-  onTapRef.current = onTap; // ✅ Added tap event
+  onTapRef.current = onTap;
 
   const handleMove = (dx: number, dy: number) => {
-    const deltaX = (dx - previousDx.current) * sensitivityRef.current;
-    const deltaY = (dy - previousDy.current) * sensitivityRef.current;
+    const rawDeltaX = (dx - previousDx.current) * sensitivityRef.current;
+    const rawDeltaY = (dy - previousDy.current) * sensitivityRef.current;
+
+    // Apply exponential smoothing
+    smoothedDx.current =
+      smoothingRef.current * rawDeltaX +
+      (1 - smoothingRef.current) * smoothedDx.current;
+    smoothedDy.current =
+      smoothingRef.current * rawDeltaY +
+      (1 - smoothingRef.current) * smoothedDy.current;
+
     previousDx.current = dx;
     previousDy.current = dy;
 
-    // Use the latest function reference
-    onMoveRef.current?.({ deltaX, deltaY });
-
-    console.log({ deltaX, deltaY, sensitivity: sensitivityRef.current });
+    onMoveRef.current?.({
+      deltaX: smoothedDx.current,
+      deltaY: smoothedDy.current,
+    });
   };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        startime.current = Date.now(); // ✅ Added start
+        startTime.current = Date.now();
         previousDx.current = 0;
         previousDy.current = 0;
-        Vibration.vibrate(100);
+        smoothedDx.current = 0;
+        smoothedDy.current = 0;
+        Vibration.vibrate(50);
         onStart?.();
       },
       onPanResponderMove: (_, gestureState) => {
         handleMove(gestureState.dx, gestureState.dy);
       },
       onPanResponderRelease: (_, gestureState) => {
-        const endtime = Date.now(); // ✅ Added end
-        const movement = Math.sqrt(gestureState.dx ** 2 + gestureState.dy ** 2); // Distance moved
-        if (endtime - startime.current < 200 && movement < 10) {
-          // ✅ Added tap event
-          console.log("Tapped");
+        const endTime = Date.now();
+        const movement = Math.sqrt(gestureState.dx ** 2 + gestureState.dy ** 2);
+        if (endTime - startTime.current < 200 && movement < 10) {
           Vibration.vibrate(100);
           onTapRef.current?.();
         } else {

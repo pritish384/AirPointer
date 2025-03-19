@@ -12,7 +12,6 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== "undefined" && window.electronAPI) {
       window.electronAPI.invoke("get-config").then((config) => {
-        console.log("Received config:", config);
         setPort(config.port || defaultConfig.websocket.port);
         setPassword(config.password || "");
       });
@@ -21,7 +20,10 @@ export default function Home() {
 
   const handleSave = () => {
     if (typeof window !== "undefined" && window.electronAPI) {
-      window.electronAPI.invoke("update-config", { newPort: port, newPassword: password });
+      window.electronAPI.invoke("update-config", {
+        newPort: port,
+        newPassword: password,
+      });
     }
     setDisabled(true);
   };
@@ -43,7 +45,11 @@ export default function Home() {
       <div className="bg-white p-8 rounded-xl border-black border-2 shadow-lg text-black w-140">
         <div
           className="absolute top-4 left-4 flex flex-row items-center gap-4 rounded-full p-2 hover:bg-gray-300"
-          onClick={() => (window.history.length > 1 ? window.history.back() : (window.location.href = "/"))}
+          onClick={() =>
+            window.history.length > 1
+              ? window.history.back()
+              : (window.location.href = "/")
+          }
         >
           <IoMdArrowBack className="text-2xl cursor-pointer" />
         </div>
@@ -57,7 +63,9 @@ export default function Home() {
             placeholder="Enter Port"
             disabled={disabled}
             value={port || ""}
-            onChange={(e) => setPort(e.target.value ? parseInt(e.target.value) : 0)}
+            onChange={(e) =>
+              setPort(e.target.value ? parseInt(e.target.value) : 0)
+            }
           />
         </div>
         <br />
@@ -75,15 +83,24 @@ export default function Home() {
         <br />
         <div className="flex justify-center mt-8 gap-4">
           {!disabled ? (
-            <button className="bg-blue-500 text-white p-2 rounded-lg w-40 hover:bg-blue-600" onClick={handleSave}>
+            <button
+              className="bg-blue-500 text-white p-2 rounded-lg w-40 hover:bg-blue-600"
+              onClick={handleSave}
+            >
               Update
             </button>
           ) : (
-            <button className="bg-black text-white p-2 rounded-lg w-40 hover:bg-gray-600" onClick={() => setDisabled(false)}>
+            <button
+              className="bg-black text-white p-2 rounded-lg w-40 hover:bg-gray-600"
+              onClick={() => setDisabled(false)}
+            >
               Edit
             </button>
           )}
-          <button className="bg-red-500 text-white p-2 rounded-lg w-40 hover:bg-red-600" onClick={handleReset}>
+          <button
+            className="bg-red-500 text-white p-2 rounded-lg w-40 hover:bg-red-600"
+            onClick={handleReset}
+          >
             Reset
           </button>
         </div>

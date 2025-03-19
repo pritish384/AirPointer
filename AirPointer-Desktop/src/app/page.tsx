@@ -23,12 +23,12 @@ export default function Home() {
         {/* Button */}
         <div className="flex gap-4 justify-center">
           <Link href="/connection">
-            <button className="mt-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded w-40">
+            <button className=" py-2 bg-blue-600 hover:bg-blue-700 text-white rounded w-40">
               Get Started
             </button>
           </Link>
           <Link href="/settings">
-            <button className="mt-6 py-2 bg-gray-600 text-white hover:bg-gray-700 hover:text-white rounded w-40">
+            <button className=" py-2 bg-gray-600 text-white hover:bg-gray-700 hover:text-white rounded w-40">
               Settings
             </button>
           </Link>
