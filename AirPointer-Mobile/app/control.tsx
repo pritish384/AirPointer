@@ -105,8 +105,6 @@ export default function Control() {
     }
   }, [controlOn]);
 
-  // ✅ Listen for Volume Button Press
-
   useEffect(() => {
     sendCommand(
       JSON.stringify({ cmd: "CONTROL_STATUS", controlOn: controlOn }),
