@@ -17,6 +17,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "jsEngine": "hermes",
       "permissions": ["android.permission.CAMERA", "android.permission.BODY_SENSORS"],
       "package": "com.pritish384.AirPointer"
     },
